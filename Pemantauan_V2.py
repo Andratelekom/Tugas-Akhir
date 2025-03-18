@@ -10,13 +10,13 @@ model = YOLO("terbaru.pt")  # Ganti sesuai path modelmu
 video_path = "video_testing.mp4"
 cap = cv2.VideoCapture(video_path)
 
-# Tracking data
+# Tracking data untuk mahasiswa saja
 tracked_data = {}
 frame_id = 0
 fps = cap.get(cv2.CAP_PROP_FPS) if cap.get(cv2.CAP_PROP_FPS) > 0 else 30
 
-# Mapping class ke aktivitas
-activity_mapping = {1: "Praktik", 2: "Tidak_praktik", 3: "Tidur"}
+# Mapping class ke aktivitas (pastikan class ke-0 adalah dosen)
+activity_mapping = {0: "Dosen", 1: "Praktik", 2: "Tidak_praktik", 3: "Tidur"}
 
 # Fungsi mendeteksi aktivitas
 def get_activity(box):
@@ -36,16 +36,30 @@ while cap.isOpened():
     if results and results[0].boxes.id is not None:
         for box, obj_id in zip(results[0].boxes, results[0].boxes.id):
             obj_id = int(obj_id)
+            cls = int(box.cls)
             activity = get_activity(box)
             x1, y1, x2, y2 = map(int, box.xyxy[0])
 
+            # Warna untuk setiap aktivitas
+            if activity == "Dosen":
+                color = (255, 0, 0)  # Biru untuk dosen
+            elif activity == "Praktik":
+                color = (0, 255, 0)
+            elif activity == "Tidak_praktik":
+                color = (0, 255, 255)
+            else:
+                color = (0, 0, 255)
+
             # Gambar bounding box dan label
-            color = (0, 255, 0) if activity == "Praktik" else (0, 255, 255) if activity == "Tidak_praktik" else (0, 0, 255)
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             cv2.putText(frame, f"ID {obj_id}: {activity}", (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            # Tracking aktivitas per ID
+            # Skip pencatatan jika objek adalah Dosen (class 0)
+            if cls == 0:
+                continue
+
+            # Tracking aktivitas per Mahasiswa
             if obj_id not in tracked_data:
                 tracked_data[obj_id] = {
                     "start_time": frame_id / fps,
@@ -75,7 +89,7 @@ for obj_id, data in tracked_data.items():
     duration = (frame_id / fps) - data["start_time"]
     data[data["last_activity"]] += duration
 
-# Simpan hasil ke CSV dengan timestamp unik
+# Simpan hasil ke CSV dengan timestamp unik (hanya mahasiswa)
 log_data = [{
     "ID": obj_id,
     "Praktik (detik)": round(data["Praktik"], 2),
@@ -90,4 +104,4 @@ timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 output_csv = f"activity_log_{timestamp}.csv"
 df.to_csv(output_csv, index=False)
 
-print(f"[✅] Log aktivitas disimpan ke: {output_csv}")
+print(f"[✅] Log aktivitas mahasiswa disimpan ke: {output_csv}")
