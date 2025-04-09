@@ -14,6 +14,7 @@ import torch
 model = YOLO("yukbisa.pt").to('cuda')
 face_db_path = "Dataset-wajah"
 video_path = 0
+#video_path = "rtsp://admin:admin@192.168.100.197:8000"
 cap = cv2.VideoCapture(video_path)
 
 # Konstanta class YOLO
